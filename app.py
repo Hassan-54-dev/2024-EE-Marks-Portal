@@ -4,8 +4,7 @@ import smtplib
 import random
 from email.mime.text import MIMEText
 # Ye lines temporarirly code mein check karne ke liye add karen
-st.write(f"Total records in file: {len(df)}")
-st.write("First 3 emails in record:", df['Email'].head(3).tolist())
+
 # --- CONFIGURATION ---
 SENDER_EMAIL = "2024ee302@student.uet.edu.pk"
 APP_PASSWORD = "awgl btam eate tpyt"
@@ -19,7 +18,8 @@ def load_data():
 
 st.title("🔒 UET Lahore - Secure Result Portal")
 st.write("Apni University Email enter karen, aapko OTP code bheja jaye ga.")
-
+st.write(f"Total records in file: {len(df)}")
+st.write("First 3 emails in record:", df['Email'].head(3).tolist())
 try:
     df = load_data()
     df['Email'] = df['Email'].str.strip().str.lower()
