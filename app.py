@@ -5,7 +5,7 @@ import random
 from email.mime.text import MIMEText
 
 # --- CONFIGURATION ---
-SENDER_EMAIL = "2024ee302@student.uet.edu.pk"
+SENDER_EMAIL = "21.6009hassanraza@gmail.com"
 APP_PASSWORD = "awgl btam eate tpyt"
 
 st.set_page_config(page_title="UET Result Portal", page_icon="🔒")
