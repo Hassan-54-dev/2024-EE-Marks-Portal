@@ -4,37 +4,82 @@ import smtplib
 import random
 from email.mime.text import MIMEText
 
-# --- CONFIGURATION ---
-SENDER_EMAIL = "21.6009hassanraza@gmail.com"  # Aapki apni Gmail
-APP_PASSWORD = "awgl btam eate tpyt"     # Jo Google se liya tha
+# --- CONFIGURATION (Directly Using Your Details) ---
+SENDER_EMAIL = "2024ee302@student.uet.edu.pk"
+APP_PASSWORD = "awgl btam eate tpyt"
+
+# Page Config
+st.set_page_config(page_title="UET Secure Result Portal", page_icon="🔒")
 
 @st.cache_data
 def load_data():
+    # Make sure your file name is exactly 'marks.csv' on GitHub
     return pd.read_csv('marks.csv')
 
-st.title("🔒 Secure Student Portal")
+st.title("🔒 UET Lahore - Secure Result Portal")
+st.write("Apni University Email enter karen, aapko OTP code bheja jaye ga.")
 
-df = load_data()
-df['Email'] = df['Email'].str.strip().str.lower()
+try:
+    df = load_data()
+    df['Email'] = df['Email'].str.strip().str.lower()
 
-# Step 1: Email Verification
-email_input = st.text_input("Enter University Email:").strip().lower()
+    # Session state initialization
+    if "otp_sent" not in st.session_state:
+        st.session_state.otp_sent = False
+    if "generated_otp" not in st.session_state:
+        st.session_state.generated_otp = None
+    if "user_email" not in st.session_state:
+        st.session_state.user_email = ""
 
-if "otp" not in st.session_state:
-    st.session_state.otp = None
-if "verified_email" not in st.session_state:
-    st.session_state.verified_email = None
+    # Step 1: Email Input
+    email_input = st.text_input("University Email ID (e.g. 2024eexxx@student.uet.edu.pk):").strip().lower()
 
-if st.button("Send OTP"):
-    if email_input in df['Email'].values:
-        otp = str(random.randint(1000, 9999))
-        st.session_state.otp = otp
-        st.session_state.verified_email = email_input
+    if st.button("Send OTP"):
+        if email_input in df['Email'].values:
+            # Generate 4-digit OTP
+            otp = str(random.randint(1000, 9999))
+            st.session_state.generated_otp = otp
+            st.session_state.user_email = email_input
+            
+            # Email Sending Logic
+            try:
+                msg = MIMEText(f"Assalam-o-Alaikum,\n\nAapka Result Portal login OTP code ye hai: {otp}\n\nKizsi ko ye code mat batayen.")
+                msg['Subject'] = f"{otp} is your Result Portal OTP"
+                msg['From'] = SENDER_EMAIL
+                msg['To'] = email_input
+                
+                # Connecting to Gmail Server
+                with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                    server.login(SENDER_EMAIL, APP_PASSWORD)
+                    server.send_message(msg)
+                
+                st.session_state.otp_sent = True
+                st.success(f"OTP aapki email ({email_input}) par bhej diya gaya hai!")
+            except Exception as e:
+                st.error(f"Email bhejney mein masla hua. Error: {e}")
+        else:
+            st.error("Ye Email hamare record mein nahi mili. Baraye meherbani sahi email likhen.")
+
+    # Step 2: OTP Verification & Result Display
+    if st.session_state.otp_sent:
+        st.divider()
+        otp_received = st.text_input("Enter 4-Digit OTP Code:", type="password")
         
-        # Email Sending Logic
-        try:
-            msg = MIMEText(f"Aapka Result Portal OTP code ye hai: {otp}")
-            msg['Subject'] = "Your OTP Code"
+        if st.button("Verify & Show My Marks"):
+            if otp_received == st.session_state.generated_otp:
+                # Get marks from CSV
+                student_data = df[df['Email'] == st.session_state.user_email]
+                obtained_marks = student_data['Marks'].values[0]
+                
+                st.success(f"Verification Successful! Aapke marks hain: **{obtained_marks}/30**")
+                st.balloons()
+            else:
+                st.error("Galat OTP! Baraye meherbani apni email check karen.")
+
+except FileNotFoundError:
+    st.error("Error: 'marks.csv' file nahi mili. GitHub par file ka naam check karen.")
+except Exception as e:
+    st.error(f"Kuch ghalat ho gaya: {e}")            msg['Subject'] = "Your OTP Code"
             msg['From'] = SENDER_EMAIL
             msg['To'] = email_input
             
