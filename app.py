@@ -1,39 +1,62 @@
 import streamlit as st
 import pandas as pd
+import smtplib
+import random
+from email.mime.text import MIMEText
 
-# Page Configuration
-st.set_page_config(page_title="UET Lahore Result", page_icon="📝")
+# --- CONFIGURATION ---
+SENDER_EMAIL = "21.6009hassanraza@gmail.com"  # Aapki apni Gmail
+APP_PASSWORD = "awgl btam eate tpyt"     # Jo Google se liya tha
 
-st.title("📝 Student Marks Portal")
-st.write("Apni University Email enter karke marks dekhen.")
-
-# Data load karne ka function
 @st.cache_data
 def load_data():
-    # 'marks.csv' file aapke project folder mein honi chahiye
     return pd.read_csv('marks.csv')
 
-try:
-    df = load_data()
-    # Email columns ko clean karna (spaces khatam karna)
-    df['Email'] = df['Email'].str.strip().str.lower()
+st.title("🔒 Secure Student Portal")
 
-    # Input Box
-    input_email = st.text_input("University Email ID:").strip().lower()
+df = load_data()
+df['Email'] = df['Email'].str.strip().str.lower()
 
-    if st.button("Show My Marks"):
-        if input_email:
-            # Email search karna
-            result = df[df['Email'] == input_email]
+# Step 1: Email Verification
+email_input = st.text_input("Enter University Email:").strip().lower()
+
+if "otp" not in st.session_state:
+    st.session_state.otp = None
+if "verified_email" not in st.session_state:
+    st.session_state.verified_email = None
+
+if st.button("Send OTP"):
+    if email_input in df['Email'].values:
+        otp = str(random.randint(1000, 9999))
+        st.session_state.otp = otp
+        st.session_state.verified_email = email_input
+        
+        # Email Sending Logic
+        try:
+            msg = MIMEText(f"Aapka Result Portal OTP code ye hai: {otp}")
+            msg['Subject'] = "Your OTP Code"
+            msg['From'] = SENDER_EMAIL
+            msg['To'] = email_input
             
-            if not result.empty:
-                marks_obtained = result['Marks'].values[0]
-                st.success(f"Aapke marks hain: **{marks_obtained}**")
-                st.balloons()
-            else:
-                st.error("Ye Email list mein nahi mili. Baraye meherbani sahi email likhen.")
-        else:
-            st.warning("Pehle Email enter karen.")
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                server.login(SENDER_EMAIL, APP_PASSWORD)
+                server.send_message(msg)
+            st.success("OTP aapki email par bhej diya gaya hai!")
+        except Exception as e:
+            st.error("Email bhejney mein masla hua. Check App Password.")
+    else:
+        st.error("Email list mein nahi mili!")
 
+# Step 2: OTP Verification
+if st.session_state.otp:
+    otp_input = st.text_input("Enter 4-Digit OTP:")
+    if st.button("Verify & Show Marks"):
+        if otp_input == st.session_state.otp:
+            user_data = df[df['Email'] == st.session_state.verified_email]
+            marks = user_data['Marks'].values[0]
+            st.success(f"Aapke marks hain: {marks}")
+            st.balloons()
+        else:
+            st.error("Galat OTP!")
 except FileNotFoundError:
     st.error("Error: 'marks.csv' file nahi mili. Folder check karen.")
