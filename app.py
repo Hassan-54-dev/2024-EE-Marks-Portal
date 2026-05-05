@@ -10,16 +10,19 @@ APP_PASSWORD = "awgl btam eate tpyt"
 
 st.set_page_config(page_title="UET Result Portal", page_icon="🔒")
 
-# 1. Data Loading (Simple & Direct)
+# 1. Data Loading
 try:
-    # Check karen ke file ka naam GitHub par 'marks.csv' hi hai na?
+    # Ensure your file on GitHub is named 'marks.csv'
     df = pd.read_csv('marks.csv')
-    df['Email'] = df['Email'].str.strip().str.lower()
+    # Standardize email columns for comparison
+    df['UET Email'] = df['UET Email'].str.strip().str.lower()
+    df['Personal Email'] = df['Personal Email'].str.strip().str.lower()
 except Exception as e:
-    st.error(f"CSV Load nahi ho saki: {e}")
-    st.stop() # Agar data hi nahi mila to app yahan ruk jaye gi
+    st.error(f"Error loading CSV file: {e}")
+    st.stop()
 
 st.title("🔒 UET Secure Result Portal")
+st.info("Verification is required to access individual academic records.")
 
 # Session state initialization
 if "otp_sent" not in st.session_state:
@@ -30,17 +33,21 @@ if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 
 # Step 1: Email Input
-email_input = st.text_input("Enter Email (e.g. 2024ee302@student.uet.edu.pk):").strip().lower()
+email_input = st.text_input("Enter your registered Email (UET or Personal):").strip().lower()
 
-if st.button("Send OTP"):
-    if email_input in df['Email'].values:
+if st.button("Generate OTP"):
+    # Search for the email in both columns
+    is_uet_email = email_input in df['UET Email'].values
+    is_personal_email = email_input in df['Personal Email'].values
+
+    if is_uet_email or is_personal_email:
         otp = str(random.randint(1000, 9999))
         st.session_state.generated_otp = otp
         st.session_state.user_email = email_input
         
         try:
-            msg = MIMEText(f"Aapka OTP ye hai: {otp}")
-            msg['Subject'] = f"{otp} is your OTP"
+            msg = MIMEText(f"Your One-Time Password (OTP) for the Result Portal is: {otp}")
+            msg['Subject'] = f"Verification Code: {otp}"
             msg['From'] = SENDER_EMAIL
             msg['To'] = email_input
             
@@ -49,23 +56,40 @@ if st.button("Send OTP"):
                 server.send_message(msg)
             
             st.session_state.otp_sent = True
-            st.success("OTP bhej diya gaya hai!")
+            st.success("OTP has been sent to your email address.")
         except Exception as e:
-            st.error(f"Email Error: {e}")
+            st.error(f"Mail Delivery Error: {e}")
     else:
-        # Debugging: Show first 2 emails to check format
-        st.error("Email nahi mili!")
-        with st.expander("Admin Debug (Sirf aapke liye)"):
-            st.write("File mein pehli 3 emails ye hain:")
-            st.write(df['Email'].head(3).tolist())
+        st.error("Email address not found in the records.")
+        with st.expander("Troubleshooting"):
+            st.write("Ensure you are using the exact email provided in the class list.")
 
-# Step 2: Verification
+# Step 2: Verification and Result Display
 if st.session_state.otp_sent:
-    otp_received = st.text_input("Enter OTP:", type="password")
-    if st.button("Verify Marks"):
+    st.divider()
+    otp_received = st.text_input("Enter the 4-digit OTP:", type="password")
+    
+    if st.button("Verify & View Result"):
         if otp_received == st.session_state.generated_otp:
-            marks = df[df['Email'] == st.session_state.user_email]['Marks'].values[0]
-            st.success(f"Aapke marks hain: {marks}/30")
+            # Locate student record based on the email used
+            if st.session_state.user_email in df['UET Email'].values:
+                student_row = df[df['UET Email'] == st.session_state.user_email]
+            else:
+                student_row = df[df['Personal Email'] == st.session_state.user_email]
+            
+            # Extract Details
+            student_name = student_row['Name'].values[0]
+            marks = student_row['Psychology Marks'].values[0]
+            
+            st.success(f"Verification Successful!")
             st.balloons()
+            
+            # Display Result Card
+            st.markdown(f"""
+            ### Student Report
+            * **Name:** {student_name}
+            * **Subject:** Psychology
+            * **Obtained Marks:** {marks}
+            """)
         else:
-            st.error("Galat OTP!")
+            st.error("Invalid OTP. Please check your email and try again.")
